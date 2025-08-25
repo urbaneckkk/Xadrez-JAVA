@@ -1,9 +1,9 @@
 package model.pieces;
 
-import model.board.Board;
-import model.board.Position;
 import java.util.ArrayList;
 import java.util.List;
+import model.board.Board;
+import model.board.Position;
 
 public class Bishop extends Piece {
 
@@ -52,6 +52,6 @@ public class Bishop extends Piece {
 
     @Override
     public String getSymbol() {
-        return "P";
+        return "B";
     }
 }

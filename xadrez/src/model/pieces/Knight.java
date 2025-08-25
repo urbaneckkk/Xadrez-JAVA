@@ -1,9 +1,9 @@
 package model.pieces;
 
-import model.board.Board;
-import model.board.Position;
 import java.util.ArrayList;
 import java.util.List;
+import model.board.Board;
+import model.board.Position;
 
 public class Knight extends Piece {
 
@@ -39,6 +39,6 @@ public class Knight extends Piece {
 
     @Override
     public String getSymbol() {
-        return "KN";
+        return "N";
     }
 }

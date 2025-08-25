@@ -1,8 +1,8 @@
 package model.pieces;
 
+import java.util.List;
 import model.board.Board;
 import model.board.Position;
-import java.util.List;
 
 public abstract class Piece {
     protected Position position;

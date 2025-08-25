@@ -1,5 +1,6 @@
 package view;
 
+import controller.ChessAI;
 import controller.Game;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -24,9 +25,15 @@ public class ChessGUI extends JFrame {
     private Color lightSquareColor;
     private Color darkSquareColor;
     private String piecesTheme;
+    private ChessAI ai;
+    private boolean playAgainstAI;
+    private boolean aiPlaysWhite;
 
     public ChessGUI() {
         game = new Game();
+        ai = new ChessAI(game);
+        playAgainstAI = false;
+        aiPlaysWhite = false;
         piecesTheme = "classic"; // tema inicial
         initializeGUI();
         applyTheme("Clássico");
@@ -140,6 +147,45 @@ public class ChessGUI extends JFrame {
 
         setLocationRelativeTo(null);
         setVisible(true);
+
+        // ======================
+        // MENU AJUSTADO PARA SWING
+        // ======================
+        JMenuBar menuBar = new JMenuBar(); // criar JMenuBar local
+
+        JMenu gameMenu = new JMenu("Jogo");
+
+        JMenuItem humanVsHuman = new JMenuItem("Humano vs Humano");
+        humanVsHuman.addActionListener(e -> {
+            playAgainstAI = false;
+            game = new Game();
+            updateBoardDisplay();
+        });
+        gameMenu.add(humanVsHuman);
+
+        JMenuItem humanVsAI = new JMenuItem("Humano vs Computador (Brancas)");
+        humanVsAI.addActionListener(e -> {
+            playAgainstAI = true;
+            aiPlaysWhite = false;
+            game = new Game();
+            updateBoardDisplay();
+        });
+        gameMenu.add(humanVsAI);
+
+        JMenuItem aiVsHuman = new JMenuItem("Computador vs Humano (Pretas)");
+        aiVsHuman.addActionListener(e -> {
+            playAgainstAI = true;
+            aiPlaysWhite = true;
+            game = new Game();
+            updateBoardDisplay();
+            // IA faz o primeiro movimento
+            ai.makeMove();
+            updateBoardDisplay();
+        });
+        gameMenu.add(aiVsHuman);
+
+        menuBar.add(gameMenu);
+        setJMenuBar(menuBar); // definir JMenuBar no JFrame
     }
 
     private void updateMoveHistory() {
@@ -232,9 +278,28 @@ public class ChessGUI extends JFrame {
                         String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
                         JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
                     }
+                    if (playAgainstAI && game.isWhiteTurn() == aiPlaysWhite) {
+                        // Pequeno atraso para a IA "pensar"
+                        Timer timer = new Timer(500, e -> {
+                            ai.makeMove();
+                            updateBoardDisplay();
+                            // Atualizar o turno e verificar condições do jogo
+                            turnLabel.setText("Turno: " +
+                                    (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+                            if (game.isGameOver()) {
+                                String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+                                JOptionPane.showMessageDialog(this,
+                                        winner + " vencem! Xeque-mate.");
+                            }
+                        });
+                        timer.setRepeats(false);
+                        timer.start();
+                    }
                 }
             }
+
         }
+
     }
 
     private void highlightSelection(Piece piece) {
@@ -292,13 +357,23 @@ public class ChessGUI extends JFrame {
 
         for (String color : colors) {
             for (String piece : pieces) {
-                String key = (color.equals("white") ? "w" : "b") + piece.substring(0, 1).toUpperCase();
-                String path = "/resources/pieces/" + piecesTheme + "/" +
-                        color + "_" + piece + ".png";
+                String key = switch (piece) {
+                    case "king" -> (color.equals("white") ? "wK" : "bK");
+                    case "queen" -> (color.equals("white") ? "wQ" : "bQ");
+                    case "rook" -> (color.equals("white") ? "wR" : "bR");
+                    case "bishop" -> (color.equals("white") ? "wB" : "bB");
+                    case "knight" -> (color.equals("white") ? "wN" : "bN");
+                    case "pawn" -> (color.equals("white") ? "wP" : "bP");
+                    default -> "";
+                };
+
+                String path = "/resources/pieces/" + piecesTheme + "/" + color + "_" + piece + ".png";
 
                 URL imageURL = getClass().getResource(path);
                 if (imageURL != null) {
-                    pieceIcons.put(key, new ImageIcon(imageURL));
+                    ImageIcon icon = new ImageIcon(imageURL);
+                    Image scaled = icon.getImage().getScaledInstance(60, 60, Image.SCALE_SMOOTH);
+                    pieceIcons.put(key, new ImageIcon(scaled));
                 } else {
                     System.err.println("Não foi possível encontrar: " + path);
                 }

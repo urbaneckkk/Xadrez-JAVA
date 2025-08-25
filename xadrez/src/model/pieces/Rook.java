@@ -53,4 +53,8 @@ public class Rook extends Piece {
         return "R";
     }
 
+    boolean hasMoved() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
 }
