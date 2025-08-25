@@ -7,9 +7,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.swing.JOptionPane;
-
 import model.board.Board;
 import model.board.Move;
 import model.board.Position;
@@ -21,7 +19,8 @@ public class Game {
     private boolean isGameOver;
     private Piece selectedPiece;
     private Position lastPawnDoubleMove;
-    private List moveHistory;
+    private int movesSinceLastCaptureOrPawnMove;
+    private List<Move> moveHistory = new ArrayList<>();
 
     public Game() {
         board = new Board();
@@ -29,6 +28,10 @@ public class Game {
         isGameOver = false;
         setupPieces();
         moveHistory = new ArrayList<>();
+    }
+
+    public List<Move> getMoveHistory() {
+        return moveHistory;
     }
 
     private void setupPieces() {
@@ -101,27 +104,27 @@ public class Game {
         board.removePiece(originalPosition);
         board.placePiece(selectedPiece, destination);
 
-         Move move = new Move(originalPosition, destination, 
-        selectedPiece, capturedPiece);
-    
-    if (selectedPiece instanceof King &&
-        Math.abs(destination.getColumn() - originalPosition.getColumn()) == 2) {
-        move.setCastling(true);
-    } else if (selectedPiece instanceof Pawn &&
-               Math.abs(destination.getRow() - originalPosition.getRow()) == 2) {
-        move.setEnPassant(true);
-    } else if (selectedPiece instanceof Pawn &&
-               (destination.getRow() == 0 || destination.getRow() == 7)) {
-        move.setPromotion(true);
-    }
-    
-    // Adicionar ao histórico
-    moveHistory.add(move);
+        Move move = new Move(originalPosition, destination,
+                selectedPiece, capturedPiece);
+
+        if (selectedPiece instanceof King &&
+                Math.abs(destination.getColumn() - originalPosition.getColumn()) == 2) {
+            move.setCastling(true);
+        } else if (selectedPiece instanceof Pawn &&
+                Math.abs(destination.getRow() - originalPosition.getRow()) == 2) {
+            move.setEnPassant(true);
+        } else if (selectedPiece instanceof Pawn &&
+                (destination.getRow() == 0 || destination.getRow() == 7)) {
+            move.setPromotion(true);
+        }
+
+        // Adicionar ao histórico
+        moveHistory.add(move);
         // Verificar condições especiais (promoção de peão, etc.)
         checkSpecialConditions(selectedPiece, destination);
 
         // Verificar se o oponente está em xeque ou xeque-mate
-        checkGameStatus();
+        checkGameStatus(originalPosition, destination);
 
         // Passar o turno
         isWhiteTurn = !isWhiteTurn;
@@ -145,11 +148,11 @@ public class Game {
                     board.removePiece(capturedPawnPos);
                 }
             }
-            
+
         } else {
             lastPawnDoubleMove = null;
         }
-        
+
         return true;
     }
 
@@ -203,151 +206,148 @@ public class Game {
         // ..
     }
 
- private void checkGameStatus() {
-    boolean whiteKingInCheck = isInCheck(true);
-    boolean blackKingInCheck = isInCheck(false);
-    
-    if (whiteKingInCheck && isCheckmate(true)) {
-        isGameOver = true;
-        // Pretas vencem
-    } else if (blackKingInCheck && isCheckmate(false)) {
-        isGameOver = true;
-        // Brancas vencem
-    }
-    
-    // Verificar empate (stalemate, repetição, etc.)
-    // ...
- }
+    private void checkGameStatus(Position originalPosition, Position destination) {
+        boolean whiteKingInCheck = isInCheck(true);
+        boolean blackKingInCheck = isInCheck(false);
 
-    if(selectedPiece instanceof King&&Math.abs(destination.getColumn()-originalPosition.getColumn())==2)
-
-    {
-
-        Position destination;
-        Position originalPosition;
-        // É um movimento de roque
-        int rookColumn = destination.getColumn() > originalPosition.getColumn() ? 7 : 0;
-        int newRookColumn = destination.getColumn() > originalPosition.getColumn() ? destination.getColumn() - 1
-                : destination.getColumn() + 1;
-
-        Position rookPosition = new Position(
-                originalPosition.getRow(), rookColumn);
-        Position newRookPosition = new Position(
-                originalPosition.getRow(), newRookColumn);
-
-        Piece rook = board.getPieceAt(rookPosition);
-        board.removePiece(rookPosition);
-        board.placePiece(rook, newRookPosition);
-    }
-
-  private boolean isInCheck(boolean whiteKing) {
-    // Encontrar a posição do rei
-    Position kingPosition = null;
-    
-    for (int row = 0; row < 8; row++) {
-        for (int col = 0; col < 8; col++) {
-            Position pos = new Position(row, col);
-            Piece piece = board.getPieceAt(pos);
-            
-            if (piece instanceof King && 
-                piece.isWhite() == whiteKing) {
-                kingPosition = pos;
-                break;
-            }
+        if (whiteKingInCheck && isCheckmate(true)) {
+            isGameOver = true;
+            // Pretas vencem
+        } else if (blackKingInCheck && isCheckmate(false)) {
+            isGameOver = true;
+            // Brancas vencem
         }
-        if (kingPosition != null) break;
-    }
-    
-    // Verificar se alguma peça adversária pode capturar o rei
-    return board.isUnderAttack(kingPosition, !whiteKing);
- }
 
- public boolean undoLastMove() {
-    if (moveHistory.isEmpty()) {
-        return false;
-    }
-    
-    Move lastMove = moveHistory.remove(moveHistory.size() - 1);
-    
-    // Mover a peça de volta
-    board.removePiece(lastMove.getTo());
-    board.placePiece(lastMove.getPiece(), lastMove.getFrom());
-    
-    // Restaurar peça capturada, se houver
-    if (lastMove.getCapturedPiece() != null) {
-        board.placePiece(lastMove.getCapturedPiece(), 
-            lastMove.getTo());
-    }
-    
-    // Lidar com casos especiais (roque, en passant, promoção)
-    // ...
-    
-    // Restaurar o turno
-    isWhiteTurn = !isWhiteTurn;
-    
-    return true;
- }
+        // Verificar empate (stalemate, repetição, etc.)
+        // ...
 
- private boolean isCheckmate(boolean whiteKing) {
-    if (!isInCheck(whiteKing)) {
-        return false;
+        if (selectedPiece instanceof King &&
+                Math.abs(destination.getColumn() - originalPosition.getColumn()) == 2) {
+
+            // É um movimento de roque
+            int rookColumn = destination.getColumn() > originalPosition.getColumn() ? 7 : 0;
+            int newRookColumn = destination.getColumn() > originalPosition.getColumn()
+                    ? destination.getColumn() - 1
+                    : destination.getColumn() + 1;
+
+            Position rookPosition = new Position(originalPosition.getRow(), rookColumn);
+            Position newRookPosition = new Position(originalPosition.getRow(), newRookColumn);
+
+            Piece rook = board.getPieceAt(rookPosition);
+            board.removePiece(rookPosition);
+            board.placePiece(rook, newRookPosition);
+        }
     }
-    
-    // Verificar se há algum movimento legal para sair do xeque
-    for (int row = 0; row < 8; row++) {
-        for (int col = 0; col < 8; col++) {
-            Position pos = new Position(row, col);
-            Piece piece = board.getPieceAt(pos);
-            
-            if (piece != null && piece.isWhite() == whiteKing) {
-                for (Object obj : piece.getPossibleMoves()) {
-                    Position movePos = (Position) obj;
-                    // Testar se o movimento tira o rei do xeque
-                    if (!moveCausesCheck(piece, movePos)) {
-                        return false;
-                    }
+
+    public boolean isInCheck(boolean whiteKing) {
+        // Encontrar a posição do rei
+        Position kingPosition = null;
+
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                Position pos = new Position(row, col);
+                Piece piece = board.getPieceAt(pos);
+
+                if (piece instanceof King &&
+                        piece.isWhite() == whiteKing) {
+                    kingPosition = pos;
+                    break;
                 }
+            }
+            if (kingPosition != null)
+                break;
+        }
+
+        // Verificar se alguma peça adversária pode capturar o rei
+        return board.isUnderAttack(kingPosition, !whiteKing);
+    }
+
+    public boolean undoLastMove() {
+        if (moveHistory.isEmpty()) {
+            return false;
+        }
+
+        Move lastMove = moveHistory.remove(moveHistory.size() - 1);
+
+        // Mover a peça de volta
+        board.removePiece(lastMove.getTo());
+        board.placePiece(lastMove.getPiece(), lastMove.getFrom());
+
+        // Restaurar peça capturada, se houver
+        if (lastMove.getCapturedPiece() != null) {
+            board.placePiece(lastMove.getCapturedPiece(),
+                    lastMove.getTo());
+        }
+
+        // Lidar com casos especiais (roque, en passant, promoção)
+        // ...
+
+        // Restaurar o turno
+        isWhiteTurn = !isWhiteTurn;
+
+        return true;
+    }
+
+    private boolean isCheckmate(boolean whiteKing) {
+        if (!isInCheck(whiteKing)) {
+            return false;
+        }
+
+        // Verificar se há algum movimento legal para sair do xeque
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                Position pos = new Position(row, col);
+                Piece piece = board.getPieceAt(pos);
+
+                if (piece != null && piece.isWhite() == whiteKing) {
+                    for (Object obj : piece.getPossibleMoves()) {
+                        Position movePos = (Position) obj;
+                        // Testar se o movimento tira o rei do xeque
+                        if (!moveCausesCheck(piece, movePos)) {
+                            return false;
+                        }
+                    }
                 }
             }
         }
         return true;
     }
-    
-        public void saveGame(String filePath) {
-    try (ObjectOutputStream oos = new ObjectOutputStream(
-            new FileOutputStream(filePath))) {
-        
-        // Salvar o estado do jogo
-        oos.writeObject(board);
-        oos.writeBoolean(isWhiteTurn);
-        oos.writeObject(moveHistory);
-        oos.writeInt(movesSinceLastCaptureOrPawnMove);
-        // Salvar outras informações relevantes
-        
-        System.out.println("Jogo salvo com sucesso em: " + filePath);
-    } catch (IOException e) {
-        System.err.println("Erro ao salvar o jogo: " + e.getMessage());
-    }
- }
 
- public static Game loadGame(String filePath) {
-    try (ObjectInputStream ois = new ObjectInputStream(
-            new FileInputStream(filePath))) {
-        
-        Game game = new Game(false); // Construtor especial sem setup inicial
-        
-        // Carregar o estado do jogo
-        game.board = (Board) ois.readObject();
-        game.isWhiteTurn = ois.readBoolean();
-        game.moveHistory = (List) ois.readObject();
-        game.movesSinceLastCaptureOrPawnMove = ois.readInt();
-        // Carregar outras informações relevantes
-        
-        System.out.println("Jogo carregado com sucesso de: " + filePath);
-        return game;
-    } catch (IOException | ClassNotFoundException e) {
-        System.err.println("Erro ao carregar o jogo: " + e.getMessage());
-        return null;
+    public void saveGame(String filePath) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(
+                new FileOutputStream(filePath))) {
+
+            // Salvar o estado do jogo
+            oos.writeObject(board);
+            oos.writeBoolean(isWhiteTurn);
+            oos.writeObject(moveHistory);
+            oos.writeInt(movesSinceLastCaptureOrPawnMove);
+            // Salvar outras informações relevantes
+
+            System.out.println("Jogo salvo com sucesso em: " + filePath);
+        } catch (IOException e) {
+            System.err.println("Erro ao salvar o jogo: " + e.getMessage());
+        }
     }
- }return true;
-}}
+
+    public static Game loadGame(String filePath) {
+        try (ObjectInputStream ois = new ObjectInputStream(
+                new FileInputStream(filePath))) {
+
+            Game game = new Game(); // Construtor especial sem setup inicial
+
+            // Carregar o estado do jogo
+            game.board = (Board) ois.readObject();
+            game.isWhiteTurn = ois.readBoolean();
+            game.moveHistory = (List) ois.readObject();
+            game.movesSinceLastCaptureOrPawnMove = ois.readInt();
+            // Carregar outras informações relevantes
+
+            System.out.println("Jogo carregado com sucesso de: " + filePath);
+            return game;
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Erro ao carregar o jogo: " + e.getMessage());
+            return null;
+        }
+    }
+}

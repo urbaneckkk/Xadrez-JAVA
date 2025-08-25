@@ -1,9 +1,9 @@
 package model.pieces;
 
-import model.board.Board;
-import model.board.Position;
 import java.util.ArrayList;
 import java.util.List;
+import model.board.Board;
+import model.board.Position;
 
 public class Rook extends Piece {
 
@@ -53,8 +53,4 @@ public class Rook extends Piece {
         return "R";
     }
 
-    public boolean hasMoved() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'hasMoved'");
-    }
 }
