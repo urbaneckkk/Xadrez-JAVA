@@ -11,51 +11,34 @@ public class Pawn extends Piece {
         super(board, isWhite);
     }
 
-    @Override
-    public List getPossibleMoves() {
-        List moves = new ArrayList<>();
-        int direction = isWhite ? -1 : 1;
+   @Override
+public List<Position> getPossibleMoves() {
+    List<Position> moves = new ArrayList<>();
+    int dir = isWhite ? -1 : 1;
 
-        // Movimento para frente
-        Position front = new Position(
-                position.getRow() + direction,
-                position.getColumn());
+    Position front = new Position(position.getRow()+dir, position.getColumn());
+    if (front.isValid() && board.isPositionEmpty(front)) {
+        moves.add(front);
 
-        if (front.isValid() && board.isPositionEmpty(front)) {
-            moves.add(front);
-
-            // Movimento duplo na primeira jogada
-            if ((isWhite && position.getRow() == 6) ||
-                    (!isWhite && position.getRow() == 1)) {
-
-                Position doubleFront = new Position(
-                        position.getRow() + 2 * direction,
-                        position.getColumn());
-
-                if (board.isPositionEmpty(doubleFront)) {
-                    moves.add(doubleFront);
-                }
-            }
+        if ((isWhite && position.getRow()==6) || (!isWhite && position.getRow()==1)) {
+            Position doubleFront = new Position(position.getRow()+2*dir, position.getColumn());
+            if (board.isPositionEmpty(doubleFront)) moves.add(doubleFront);
         }
-
-        Object lastPawnDoubleMove = false;
-        // Verificar capturas en passant
-        if (lastPawnDoubleMove != null &&
-                ((Position) lastPawnDoubleMove).getRow() == position.getRow()) {
-
-            if (Math.abs(((Position) lastPawnDoubleMove).getColumn() -
-                    position.getColumn()) == 1) {
-
-                Position enPassantPos = new Position(
-                        position.getRow() + direction,
-                        ((Position) lastPawnDoubleMove).getColumn());
-
-                moves.add(enPassantPos);
-            }
-        }
-
-        return moves;
     }
+
+    // capturas diagonais
+    Position capL = new Position(position.getRow()+dir, position.getColumn()-1);
+    Position capR = new Position(position.getRow()+dir, position.getColumn()+1);
+    if (capL.isValid()) {
+        Piece at = board.getPieceAt(capL);
+        if (at != null && at.isWhite()!=isWhite) moves.add(capL);
+    }
+    if (capR.isValid()) {
+        Piece at = board.getPieceAt(capR);
+        if (at != null && at.isWhite()!=isWhite) moves.add(capR);
+    }
+    return moves;
+}
 
     @Override
     public String getSymbol() {

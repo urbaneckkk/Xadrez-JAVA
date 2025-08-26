@@ -2,7 +2,7 @@ package model.board;
 
 import model.pieces.Piece;
 
-public class Move {
+public class Move implements Cloneable {
     private Position from;
     private Position to;
     private Piece piece;
@@ -16,12 +16,8 @@ public class Move {
         this.to = to;
         this.piece = piece;
         this.capturedPiece = capturedPiece;
-        this.isPromotion = false;
-        this.isCastling = false;
-        this.isEnPassant = false;
     }
 
-    // Getters e setters
     public Position getFrom() {
         return from;
     }
@@ -66,4 +62,19 @@ public class Move {
     public String toString() {
         return piece.getSymbol() + from.toString() + "-" + to.toString();
     }
+
+    @Override
+    public Move clone() {
+        Move cloned = new Move(
+                new Position(from.getRow(), from.getColumn()),
+                new Position(to.getRow(), to.getColumn()),
+                piece, // pode ser a mesma referência da peça
+                capturedPiece // idem
+        );
+        cloned.setPromotion(isPromotion);
+        cloned.setCastling(isCastling);
+        cloned.setEnPassant(isEnPassant);
+        return cloned;
+    }
+
 }

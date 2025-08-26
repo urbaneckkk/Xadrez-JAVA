@@ -69,7 +69,14 @@ public class ChessGUI extends JFrame {
 
         JButton undoButton = new JButton("Desfazer");
         undoButton.addActionListener(e -> {
-            // Implementar funcionalidade de desfazer
+            boolean undone = game.undoLastMove();
+            if (undone) {
+                updateBoardDisplay();
+                updateMoveHistory();
+                turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+            } else {
+                JOptionPane.showMessageDialog(this, "Não há jogadas para desfazer!");
+            }
         });
         controlPanel.add(undoButton);
 
@@ -201,6 +208,35 @@ public class ChessGUI extends JFrame {
         moveHistoryTextArea.setText(sb.toString());
     }
 
+    private void playAIMoveIfNeeded() {
+        if (!playAgainstAI)
+            return;
+
+        // Checa se é vez da IA
+        if (game.isWhiteTurn() == aiPlaysWhite && !game.isGameOver()) {
+            Timer timer = new Timer(500, e -> {
+                ai.makeMove();
+                updateBoardDisplay();
+                updateMoveHistory();
+                turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+
+                if (game.isInCheck(game.isWhiteTurn())) {
+                    JOptionPane.showMessageDialog(this, "Xeque!");
+                }
+
+                if (game.isGameOver()) {
+                    String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+                    JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                }
+
+                // Chamar novamente caso seja turno contínuo da IA (ex: IA joga as duas brancas)
+                playAIMoveIfNeeded();
+            });
+            timer.setRepeats(false);
+            timer.start();
+        }
+    }
+
     private void updateBoardColors() {
         boolean isWhite = true;
         for (int row = 0; row < 8; row++) {
@@ -242,77 +278,74 @@ public class ChessGUI extends JFrame {
     }
 
     private void handleSquareClick(int row, int col) {
-        Position position = new Position(row, col);
-        Piece targetPiece = game.getBoard().getPieceAt(position);
+        Position position = new Position(row, col); // destino
         Piece selectedPiece = game.getSelectedPiece();
 
         clearHighlights();
 
         if (selectedPiece == null) {
-            // Selecionar peça
             game.selectPiece(position);
             selectedPiece = game.getSelectedPiece();
             if (selectedPiece != null)
                 highlightSelection(selectedPiece);
         } else {
-            if (targetPiece != null && targetPiece.isWhite() == selectedPiece.isWhite()) {
-                // Selecionar outra peça da mesma cor
-                game.selectPiece(position);
-                selectedPiece = game.getSelectedPiece();
-                if (selectedPiece != null)
-                    highlightSelection(selectedPiece);
-            } else {
-                // Tentar mover peça
-                boolean moveSuccessful = game.movePiece(position);
-                if (moveSuccessful) {
-                    updateBoardDisplay();
-                    updateMoveHistory();
-                    turnLabel.setText("Turno: " +
-                            (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+            boolean moveSuccessful = game.movePiece(selectedPiece.getPosition(), position);
+            if (moveSuccessful) {
+                updateBoardDisplay();
+                updateMoveHistory();
+                turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
 
-                    if (game.isInCheck(game.isWhiteTurn())) {
-                        JOptionPane.showMessageDialog(this, "Xeque!");
-                    }
-
-                    if (game.isGameOver()) {
-                        String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                        JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
-                    }
-                    if (playAgainstAI && game.isWhiteTurn() == aiPlaysWhite) {
-                        // Pequeno atraso para a IA "pensar"
-                        Timer timer = new Timer(500, e -> {
-                            ai.makeMove();
-                            updateBoardDisplay();
-                            // Atualizar o turno e verificar condições do jogo
-                            turnLabel.setText("Turno: " +
-                                    (game.isWhiteTurn() ? "Brancas" : "Pretas"));
-                            if (game.isGameOver()) {
-                                String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                                JOptionPane.showMessageDialog(this,
-                                        winner + " vencem! Xeque-mate.");
-                            }
-                        });
-                        timer.setRepeats(false);
-                        timer.start();
-                    }
+                if (game.isInCheck(game.isWhiteTurn())) {
+                    JOptionPane.showMessageDialog(this, "Xeque!");
                 }
+
+                if (game.isGameOver()) {
+                    String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+                    JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                }
+
+                // IA joga se necessário
+                if (playAgainstAI && game.isWhiteTurn() == aiPlaysWhite) {
+                    Timer timer = new Timer(500, e -> {
+                        ai.makeMove(); // AI seleciona movePiece internamente
+                        updateBoardDisplay();
+                        turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+
+                        if (game.isGameOver()) {
+                            String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+                            JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                        }
+                    });
+                    timer.setRepeats(false);
+                    timer.start();
+                }
+            } else {
+                // Se movimento inválido, apenas refaz highlight
+                highlightSelection(selectedPiece);
             }
-
         }
-
     }
 
     private void highlightSelection(Piece piece) {
-        squares[piece.getPosition().getRow()][piece.getPosition().getColumn()]
+        Position from = piece.getPosition();
+        squares[from.getRow()][from.getColumn()]
                 .setBorder(BorderFactory.createLineBorder(Color.BLUE, 3));
+
         List<Position> moves = piece.getPossibleMoves();
         if (moves != null) {
             for (Position pos : moves) {
-                squares[pos.getRow()][pos.getColumn()]
-                        .setBorder(BorderFactory.createLineBorder(Color.GREEN, 3));
+                Piece targetPiece = game.getBoard().getPieceAt(pos);
+                if (targetPiece == null) {
+                    // Movimento normal
+                    squares[pos.getRow()][pos.getColumn()]
+                            .setBorder(BorderFactory.createLineBorder(Color.GREEN, 3));
+                } else if (targetPiece.isWhite() != piece.isWhite()) {
+                    // Captura
+                    squares[pos.getRow()][pos.getColumn()]
+                            .setBorder(BorderFactory.createLineBorder(Color.RED, 3));
+                }
             }
         }
-
     }
 
     private void clearHighlights() {

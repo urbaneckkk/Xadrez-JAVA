@@ -36,7 +36,7 @@ public class Game {
 
     private void setupPieces() {
         // Colocar peças na posição inicial
-        // Peças brancas
+        // brancas
         board.placePiece(new Rook(board, true), new Position(7, 0));
         board.placePiece(new Knight(board, true), new Position(7, 1));
         board.placePiece(new Bishop(board, true), new Position(7, 2));
@@ -45,13 +45,27 @@ public class Game {
         board.placePiece(new Bishop(board, true), new Position(7, 5));
         board.placePiece(new Knight(board, true), new Position(7, 6));
         board.placePiece(new Rook(board, true), new Position(7, 7));
+        for (int c = 0; c < 8; c++)
+            board.placePiece(new Pawn(board, true), new Position(6, c));
 
-        for (int col = 0; col < 8; col++) {
-            board.placePiece(new Pawn(board, true), new Position(6, col));
-        }
+        // pretas
+        board.placePiece(new Rook(board, false), new Position(0, 0));
+        board.placePiece(new Knight(board, false), new Position(0, 1));
+        board.placePiece(new Bishop(board, false), new Position(0, 2));
+        board.placePiece(new Queen(board, false), new Position(0, 3));
+        board.placePiece(new King(board, false), new Position(0, 4));
+        board.placePiece(new Bishop(board, false), new Position(0, 5));
+        board.placePiece(new Knight(board, false), new Position(0, 6));
+        board.placePiece(new Rook(board, false), new Position(0, 7));
+        for (int c = 0; c < 8; c++)
+            board.placePiece(new Pawn(board, false), new Position(1, c));
 
         // Peças pretas (mesma lógica)
         // ...
+    }
+
+    public boolean movePieceDirect(Position from, Position to) {
+        return movePiece(from, to);
     }
 
     public Board getBoard() {
@@ -79,87 +93,72 @@ public class Game {
         }
     }
 
-    public boolean movePiece(Position destination) {
-        if (selectedPiece == null || isGameOver) {
+    public boolean movePiece(Position from, Position to) {
+        Piece piece = board.getPieceAt(from);
+        if (piece == null || piece.isWhite() != isWhiteTurn || isGameOver)
             return false;
-        }
 
-        // Verificar se o movimento é válido
-        if (!selectedPiece.canMoveTo(destination)) {
+        if (!piece.canMoveTo(to) || moveCausesCheck(piece, to))
             return false;
-        }
 
-        // Verificar se o movimento deixa o rei em xeque
-        if (moveCausesCheck(selectedPiece, destination)) {
-            return false;
-        }
+        Piece capturedPiece = board.getPieceAt(to);
+        board.removePiece(from);
+        board.placePiece(piece, to);
 
-        // Capturar peça, se necessário
-        Piece capturedPiece = board.getPieceAt(destination);
+        Move move = new Move(from, to, piece, capturedPiece);
 
-        // Guardar posição original para desfazer o movimento, se necessário
-        Position originalPosition = selectedPiece.getPosition();
-
-        // Fazer o movimento
-        board.removePiece(originalPosition);
-        board.placePiece(selectedPiece, destination);
-
-        Move move = new Move(originalPosition, destination,
-                selectedPiece, capturedPiece);
-
-        if (selectedPiece instanceof King &&
-                Math.abs(destination.getColumn() - originalPosition.getColumn()) == 2) {
+        if (piece instanceof King && Math.abs(to.getColumn() - from.getColumn()) == 2)
             move.setCastling(true);
-        } else if (selectedPiece instanceof Pawn &&
-                Math.abs(destination.getRow() - originalPosition.getRow()) == 2) {
+        else if (piece instanceof Pawn && Math.abs(to.getRow() - from.getRow()) == 2)
             move.setEnPassant(true);
-        } else if (selectedPiece instanceof Pawn &&
-                (destination.getRow() == 0 || destination.getRow() == 7)) {
+        else if (piece instanceof Pawn && (to.getRow() == 0 || to.getRow() == 7))
             move.setPromotion(true);
-        }
 
-        // Adicionar ao histórico
         moveHistory.add(move);
-        // Verificar condições especiais (promoção de peão, etc.)
-        checkSpecialConditions(selectedPiece, destination);
+        checkSpecialConditions(piece, to);
+        checkGameStatus(from, to);
 
-        // Verificar se o oponente está em xeque ou xeque-mate
-        checkGameStatus(originalPosition, destination);
-
-        // Passar o turno
         isWhiteTurn = !isWhiteTurn;
         selectedPiece = null;
-        if (selectedPiece instanceof Pawn) {
-            // Verificar movimento duplo
-            if (Math.abs(destination.getRow() -
-                    originalPosition.getRow()) == 2) {
-                lastPawnDoubleMove = destination;
-            } else {
-                // Verificar captura en passant
-                if (Math.abs(destination.getColumn() -
-                        originalPosition.getColumn()) == 1 &&
-                        board.getPieceAt(destination) == null) {
 
-                    // É uma captura en passant
-                    Position capturedPawnPos = new Position(
-                            originalPosition.getRow(),
-                            destination.getColumn());
-
-                    board.removePiece(capturedPawnPos);
-                }
-            }
-
-        } else {
+        // Captura en passant
+        if (piece instanceof Pawn) {
+            if (Math.abs(to.getRow() - from.getRow()) == 2)
+                lastPawnDoubleMove = to;
+            else if (Math.abs(to.getColumn() - from.getColumn()) == 1 && capturedPiece == null) {
+                Position capturedPawnPos = new Position(from.getRow(), to.getColumn());
+                board.removePiece(capturedPawnPos);
+            } else
+                lastPawnDoubleMove = null;
+        } else
             lastPawnDoubleMove = null;
-        }
 
         return true;
     }
 
-    private boolean moveCausesCheck(Piece piece, Position destination) {
-        // Implementação para verificar se um movimento deixa o próprio rei em xeque
-        // ...
-        return false;
+    boolean moveCausesCheck(Piece piece, Position destination) {
+        Board tempBoard = board.clone();
+        Position originalPos = piece.getPosition();
+
+        Piece tempPiece = tempBoard.getPieceAt(originalPos);
+        tempBoard.removePiece(originalPos);
+        tempBoard.placePiece(tempPiece, destination);
+
+        // Encontrar posição do rei da mesma cor
+        Position kingPos = null;
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = tempBoard.getPieceAt(new Position(r, c));
+                if (p instanceof King && p.isWhite() == piece.isWhite()) {
+                    kingPos = p.getPosition();
+                    break;
+                }
+            }
+            if (kingPos != null)
+                break;
+        }
+
+        return tempBoard.isUnderAttack(kingPos, !piece.isWhite());
     }
 
     private void checkSpecialConditions(Piece piece, Position destination) {

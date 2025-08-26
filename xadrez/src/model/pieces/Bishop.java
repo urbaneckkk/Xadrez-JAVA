@@ -12,43 +12,22 @@ public class Bishop extends Piece {
     }
 
     @Override
-    public List getPossibleMoves() {
-        List moves = new ArrayList<>();
-
-        // Direções diagonais:
-        // superior-esquerda, superior-direita,
-        // inferior-esquerda, inferior-direita
-        int[][] directions = {
-                { -1, -1 }, { -1, 1 },
-                { 1, -1 }, { 1, 1 }
-        };
-
-        for (int[] direction : directions) {
-            int row = position.getRow();
-            int col = position.getColumn();
-
-            while (true) {
-                row += direction[0];
-                col += direction[1];
-                Position newPos = new Position(row, col);
-
-                if (!newPos.isValid())
-                    break;
-
-                Piece pieceAt = board.getPieceAt(newPos);
-                if (pieceAt == null) {
-                    moves.add(newPos);
-                } else if (pieceAt.isWhite() != isWhite) {
-                    moves.add(newPos);
-                    break;
-                } else {
-                    break;
-                }
-            }
+public List<Position> getPossibleMoves() {
+    List<Position> moves = new ArrayList<>();
+    int[][] directions = {{-1,-1},{-1,1},{1,-1},{1,1}};
+    for (int[] d : directions) {
+        int r = position.getRow(), c = position.getColumn();
+        while (true) {
+            r += d[0]; c += d[1];
+            Position np = new Position(r, c);
+            if (!np.isValid()) break;
+            Piece at = board.getPieceAt(np);
+            if (at == null) { moves.add(np); }
+            else { if (at.isWhite() != isWhite) moves.add(np); break; }
         }
-
-        return moves;
     }
+    return moves;
+}
 
     @Override
     public String getSymbol() {
