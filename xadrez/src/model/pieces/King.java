@@ -23,6 +23,31 @@ public class King extends Piece {
                     moves.add(np);
             }
         }
+
+        // Lógica do Roque
+        if (!this.hasMoved) {
+            // Roque do lado do rei (king side)
+            Position rookKingSidePos = new Position(position.getRow(), 7);
+            Piece rookKingSide = board.getPieceAt(rookKingSidePos);
+            if (rookKingSide instanceof Rook && !rookKingSide.hasMoved) {
+                if (board.getPieceAt(new Position(position.getRow(), 5)) == null &&
+                        board.getPieceAt(new Position(position.getRow(), 6)) == null) {
+                    moves.add(new Position(position.getRow(), 6));
+                }
+            }
+
+            // Roque do lado da rainha (queen side)
+            Position rookQueenSidePos = new Position(position.getRow(), 0);
+            Piece rookQueenSide = board.getPieceAt(rookQueenSidePos);
+            if (rookQueenSide instanceof Rook && !rookQueenSide.hasMoved) {
+                if (board.getPieceAt(new Position(position.getRow(), 1)) == null &&
+                        board.getPieceAt(new Position(position.getRow(), 2)) == null &&
+                        board.getPieceAt(new Position(position.getRow(), 3)) == null) {
+                    moves.add(new Position(position.getRow(), 2));
+                }
+            }
+        }
+
         return moves;
     }
 

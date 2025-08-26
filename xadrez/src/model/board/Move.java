@@ -65,12 +65,14 @@ public class Move implements Cloneable {
 
     @Override
     public Move clone() {
-        Move cloned = new Move(
-                new Position(from.getRow(), from.getColumn()),
-                new Position(to.getRow(), to.getColumn()),
-                piece, // pode ser a mesma referência da peça
-                capturedPiece // idem
-        );
+        // Cria novas posições para evitar problemas de referência
+        Position clonedFrom = new Position(from.getRow(), from.getColumn());
+        Position clonedTo = new Position(to.getRow(), to.getColumn());
+        
+        // Nota: as peças são mantidas como referências porque elas serão clonadas
+        // pelo Board.clone() quando necessário
+        Move cloned = new Move(clonedFrom, clonedTo, piece, capturedPiece);
+        
         cloned.setPromotion(isPromotion);
         cloned.setCastling(isCastling);
         cloned.setEnPassant(isEnPassant);

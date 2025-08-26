@@ -6,8 +6,8 @@ import model.board.Position;
 public abstract class Piece {
     protected Position position;
     protected boolean isWhite;
+    protected boolean hasMoved = false; // Adicionado para roque
 
-    // Dê acesso ao tabuleiro somente pelas subclasses
     protected model.board.Board board;
 
     public Piece(model.board.Board board, boolean isWhite) {
@@ -25,9 +25,13 @@ public abstract class Piece {
 
     public void setPosition(Position position) {
         this.position = position;
+        this.hasMoved = true;
     }
 
-    // Agora tipado corretamente
+    public boolean hasMoved() {
+        return hasMoved;
+    }
+
     public abstract List<Position> getPossibleMoves();
 
     public boolean canMoveTo(Position position) {

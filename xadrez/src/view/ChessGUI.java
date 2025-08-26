@@ -32,8 +32,8 @@ public class ChessGUI extends JFrame {
     public ChessGUI() {
         game = new Game();
         ai = new ChessAI(game);
-        playAgainstAI = false;
-        aiPlaysWhite = false;
+        playAgainstAI = true; // Ativa o modo contra IA por padrão
+        aiPlaysWhite = false; // IA joga com as peças pretas por padrão
         piecesTheme = "classic"; // tema inicial
         initializeGUI();
         applyTheme("Clássico");
@@ -166,7 +166,10 @@ public class ChessGUI extends JFrame {
         humanVsHuman.addActionListener(e -> {
             playAgainstAI = false;
             game = new Game();
+            ai = new ChessAI(game); // Atualiza a instância da IA com o novo jogo
             updateBoardDisplay();
+            updateMoveHistory();
+            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
         });
         gameMenu.add(humanVsHuman);
 
@@ -175,7 +178,10 @@ public class ChessGUI extends JFrame {
             playAgainstAI = true;
             aiPlaysWhite = false;
             game = new Game();
+            ai = new ChessAI(game); // Atualiza a instância da IA com o novo jogo
             updateBoardDisplay();
+            updateMoveHistory();
+            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
         });
         gameMenu.add(humanVsAI);
 
@@ -184,12 +190,26 @@ public class ChessGUI extends JFrame {
             playAgainstAI = true;
             aiPlaysWhite = true;
             game = new Game();
+            ai = new ChessAI(game); // Atualiza a instância da IA com o novo jogo
             updateBoardDisplay();
+            updateMoveHistory();
+            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
             // IA faz o primeiro movimento
-            ai.makeMove();
-            updateBoardDisplay();
+            playAIMoveIfNeeded();
         });
         gameMenu.add(aiVsHuman);
+        
+        JMenuItem newGame = new JMenuItem("Novo Jogo");
+        newGame.addActionListener(e -> {
+            game = new Game();
+            ai = new ChessAI(game); // Atualiza a instância da IA com o novo jogo
+            updateBoardDisplay();
+            updateMoveHistory();
+            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+            // Se for modo contra IA e for a vez da IA, faz o movimento
+            playAIMoveIfNeeded();
+        });
+        gameMenu.add(newGame);
 
         menuBar.add(gameMenu);
         setJMenuBar(menuBar); // definir JMenuBar no JFrame
@@ -216,21 +236,24 @@ public class ChessGUI extends JFrame {
         if (game.isWhiteTurn() == aiPlaysWhite && !game.isGameOver()) {
             Timer timer = new Timer(500, e -> {
                 ai.makeMove();
-                updateBoardDisplay();
-                updateMoveHistory();
-                turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+                // Atualiza a interface gráfica imediatamente após o movimento da IA
+                SwingUtilities.invokeLater(() -> {
+                    updateBoardDisplay();
+                    updateMoveHistory();
+                    turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
 
-                if (game.isInCheck(game.isWhiteTurn())) {
-                    JOptionPane.showMessageDialog(this, "Xeque!");
-                }
+                    if (game.isInCheck(game.isWhiteTurn())) {
+                        JOptionPane.showMessageDialog(this, "Xeque!");
+                    }
 
-                if (game.isGameOver()) {
-                    String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                    JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
-                }
+                    if (game.isGameOver()) {
+                        String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+                        JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                    }
 
-                // Chamar novamente caso seja turno contínuo da IA (ex: IA joga as duas brancas)
-                playAIMoveIfNeeded();
+                    // Chamar novamente caso seja turno contínuo da IA (ex: IA joga as duas brancas)
+                    playAIMoveIfNeeded();
+                });
             });
             timer.setRepeats(false);
             timer.start();
@@ -278,7 +301,7 @@ public class ChessGUI extends JFrame {
     }
 
     private void handleSquareClick(int row, int col) {
-        Position position = new Position(row, col); // destino
+        Position position = new Position(row, col);
         Piece selectedPiece = game.getSelectedPiece();
 
         clearHighlights();
@@ -304,24 +327,37 @@ public class ChessGUI extends JFrame {
                     JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
                 }
 
-                // IA joga se necessário
                 if (playAgainstAI && game.isWhiteTurn() == aiPlaysWhite) {
                     Timer timer = new Timer(500, e -> {
-                        ai.makeMove(); // AI seleciona movePiece internamente
-                        updateBoardDisplay();
-                        turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+                        ai.makeMove();
+                        // Atualiza a interface gráfica imediatamente após o movimento da IA
+                        SwingUtilities.invokeLater(() -> {
+                            updateBoardDisplay();
+                            updateMoveHistory();
+                            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
 
-                        if (game.isGameOver()) {
-                            String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                            JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
-                        }
+                            if (game.isInCheck(game.isWhiteTurn())) {
+                                JOptionPane.showMessageDialog(this, "Xeque!");
+                            }
+                            
+                            if (game.isGameOver()) {
+                                String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+                                JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                            }
+                        });
                     });
                     timer.setRepeats(false);
                     timer.start();
                 }
             } else {
-                // Se movimento inválido, apenas refaz highlight
-                highlightSelection(selectedPiece);
+                // Se o movimento for inválido, tenta selecionar outra peça
+                Piece newSelectedPiece = game.getBoard().getPieceAt(position);
+                if (newSelectedPiece != null && newSelectedPiece.isWhite() == game.isWhiteTurn()) {
+                    game.selectPiece(position);
+                    highlightSelection(game.getSelectedPiece());
+                } else {
+                    game.selectPiece(null); // Desseleciona se o clique for inválido
+                }
             }
         }
     }

@@ -279,7 +279,25 @@ public class Game {
         }
 
         // Lidar com casos especiais (roque, en passant, promoção)
-        // ...
+        if (lastMove.isCastling()) {
+            // Desfazer o movimento do rei
+            Piece king = lastMove.getPiece();
+            Position from = lastMove.getFrom();
+            Position to = lastMove.getTo();
+            board.removePiece(to);
+            board.placePiece(king, from);
+
+            // Desfazer o movimento da torre
+            int rookOriginalCol = (to.getColumn() == 6) ? 7 : 0;
+            int rookNewCol = (to.getColumn() == 6) ? 5 : 3;
+
+            Position rookNewPos = new Position(from.getRow(), rookNewCol);
+            Position rookOriginalPos = new Position(from.getRow(), rookOriginalCol);
+
+            Piece rook = board.getPieceAt(rookNewPos);
+            board.removePiece(rookNewPos);
+            board.placePiece(rook, rookOriginalPos);
+        }
 
         // Restaurar o turno
         isWhiteTurn = !isWhiteTurn;
@@ -320,7 +338,6 @@ public class Game {
             oos.writeObject(board);
             oos.writeBoolean(isWhiteTurn);
             oos.writeObject(moveHistory);
-            oos.writeInt(movesSinceLastCaptureOrPawnMove);
             // Salvar outras informações relevantes
 
             System.out.println("Jogo salvo com sucesso em: " + filePath);
@@ -338,8 +355,7 @@ public class Game {
             // Carregar o estado do jogo
             game.board = (Board) ois.readObject();
             game.isWhiteTurn = ois.readBoolean();
-            game.moveHistory = (List) ois.readObject();
-            game.movesSinceLastCaptureOrPawnMove = ois.readInt();
+            game.moveHistory = (List<Move>) ois.readObject();
             // Carregar outras informações relevantes
 
             System.out.println("Jogo carregado com sucesso de: " + filePath);

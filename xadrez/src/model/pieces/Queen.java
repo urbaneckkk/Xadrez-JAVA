@@ -12,8 +12,8 @@ public class Queen extends Piece {
     }
 
     @Override
-    public List getPossibleMoves() {
-        List moves = new ArrayList<>();
+    public List<Position> getPossibleMoves() {
+        List<Position> moves = new ArrayList<>();
 
         // Combina as direções da torre e do bispo
         int[][] directions = {
