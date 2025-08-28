@@ -632,7 +632,7 @@ public class ChessGUI extends JFrame {
                 URL imageURL = getClass().getResource(path);
                 if (imageURL != null) {
                     ImageIcon icon = new ImageIcon(imageURL);
-                    Image scaled = icon.getImage().getScaledInstance(60, 60, Image.SCALE_SMOOTH);
+                    Image scaled = icon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH);
                     pieceIcons.put(key, new ImageIcon(scaled));
                 } else {
                     System.err.println("Não foi possível encontrar: " + path);
