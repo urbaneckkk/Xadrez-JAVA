@@ -85,12 +85,19 @@ public class Game {
     }
 
     public void selectPiece(Position position) {
+        if (position == null) {
+            selectedPiece = null;
+            return;
+        }
+        
         Piece piece = board.getPieceAt(position);
 
         // Só pode selecionar peça da cor do jogador atual
         if (piece != null && piece.isWhite() == isWhiteTurn) {
             selectedPiece = piece;
         }
+        // Se não há peça válida para selecionar, mantém a seleção atual
+        // (não desseleciona automaticamente)
     }
 
     public boolean movePiece(Position from, Position to) {
@@ -102,12 +109,29 @@ public class Game {
             return false;
 
         Piece capturedPiece = board.getPieceAt(to);
+        
+        // Verificar se é um movimento de roque antes de mover o rei
+        boolean isCastling = piece instanceof King && Math.abs(to.getColumn() - from.getColumn()) == 2;
+        
         board.removePiece(from);
         board.placePiece(piece, to);
+        
+        // Executar o movimento da torre no roque
+        if (isCastling) {
+            int rookColumn = to.getColumn() > from.getColumn() ? 7 : 0;
+            int newRookColumn = to.getColumn() > from.getColumn() ? to.getColumn() - 1 : to.getColumn() + 1;
+            
+            Position rookPosition = new Position(from.getRow(), rookColumn);
+            Position newRookPosition = new Position(from.getRow(), newRookColumn);
+            
+            Piece rook = board.getPieceAt(rookPosition);
+            board.removePiece(rookPosition);
+            board.placePieceMove(rook, newRookPosition);
+        }
 
         Move move = new Move(from, to, piece, capturedPiece);
 
-        if (piece instanceof King && Math.abs(to.getColumn() - from.getColumn()) == 2)
+        if (isCastling)
             move.setCastling(true);
         else if (piece instanceof Pawn && Math.abs(to.getRow() - from.getRow()) == 2)
             move.setEnPassant(true);
@@ -219,23 +243,6 @@ public class Game {
 
         // Verificar empate (stalemate, repetição, etc.)
         // ...
-
-        if (selectedPiece instanceof King &&
-                Math.abs(destination.getColumn() - originalPosition.getColumn()) == 2) {
-
-            // É um movimento de roque
-            int rookColumn = destination.getColumn() > originalPosition.getColumn() ? 7 : 0;
-            int newRookColumn = destination.getColumn() > originalPosition.getColumn()
-                    ? destination.getColumn() - 1
-                    : destination.getColumn() + 1;
-
-            Position rookPosition = new Position(originalPosition.getRow(), rookColumn);
-            Position newRookPosition = new Position(originalPosition.getRow(), newRookColumn);
-
-            Piece rook = board.getPieceAt(rookPosition);
-            board.removePiece(rookPosition);
-            board.placePiece(rook, newRookPosition);
-        }
     }
 
     public boolean isInCheck(boolean whiteKing) {

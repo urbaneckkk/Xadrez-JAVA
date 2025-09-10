@@ -315,14 +315,6 @@ public class ChessGUI extends JFrame {
         classicTheme.addActionListener(e -> applyTheme("Clássico"));
         themeMenu.add(classicTheme);
         
-        JMenuItem blueTheme = new JMenuItem("Azul");
-        blueTheme.addActionListener(e -> applyTheme("Azul"));
-        themeMenu.add(blueTheme);
-        
-        JMenuItem greenTheme = new JMenuItem("Verde");
-        greenTheme.addActionListener(e -> applyTheme("Verde"));
-        themeMenu.add(greenTheme);
-        
         JMenuItem purpleTheme = new JMenuItem("Roxo e Branco");
         purpleTheme.addActionListener(e -> applyTheme("Roxo e Branco"));
         themeMenu.add(purpleTheme);
@@ -396,8 +388,13 @@ public class ChessGUI extends JFrame {
                     }
 
                     if (game.isGameOver()) {
+                        timerActive = false;
+                        gameTimer.stop();
                         String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                        JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                        JOptionPane.showMessageDialog(this, 
+                            "🏆 XEQUE-MATE! 🏆\n\n" + winner + " VENCERAM O JOGO!\n\nParabéns pela vitória!", 
+                            "Fim de Jogo", 
+                            JOptionPane.INFORMATION_MESSAGE);
                     }
 
                     // Chamar novamente caso seja turno contínuo da IA (ex: IA joga as duas brancas)
@@ -484,7 +481,10 @@ public class ChessGUI extends JFrame {
                     timerActive = false;
                     gameTimer.stop();
                     String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                    JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                    JOptionPane.showMessageDialog(this, 
+                        "🏆 XEQUE-MATE! 🏆\n\n" + winner + " VENCERAM O JOGO!\n\nParabéns pela vitória!", 
+                        "Fim de Jogo", 
+                        JOptionPane.INFORMATION_MESSAGE);
                 }
 
                 if (playAgainstAI && game.isWhiteTurn() == aiPlaysWhite) {
@@ -513,7 +513,10 @@ public class ChessGUI extends JFrame {
                                 timerActive = false;
                                 gameTimer.stop();
                                 String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                                JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+                                JOptionPane.showMessageDialog(this, 
+                                    "🏆 XEQUE-MATE! 🏆\n\n" + winner + " VENCERAM O JOGO!\n\nParabéns pela vitória!", 
+                                    "Fim de Jogo", 
+                                    JOptionPane.INFORMATION_MESSAGE);
                             }
                         });
                     });
@@ -527,7 +530,11 @@ public class ChessGUI extends JFrame {
                     game.selectPiece(position);
                     highlightSelection(game.getSelectedPiece());
                 } else {
-                    game.selectPiece(null); // Desseleciona se o clique for inválido
+                    // Se clicou em casa vazia ou peça inválida, mantém a seleção atual
+                    // e reaplica o highlight
+                    if (selectedPiece != null) {
+                        highlightSelection(selectedPiece);
+                    }
                 }
             }
         }
@@ -567,16 +574,6 @@ public class ChessGUI extends JFrame {
                 lightSquareColor = new Color(240, 217, 181);
                 darkSquareColor = new Color(181, 136, 99);
                 piecesTheme = "classic";
-            }
-            case "Azul" -> {
-                lightSquareColor = new Color(222, 227, 230);
-                darkSquareColor = new Color(140, 184, 219);
-                piecesTheme = "blue";
-            }
-            case "Verde" -> {
-                lightSquareColor = new Color(235, 236, 208);
-                darkSquareColor = new Color(119, 149, 86);
-                piecesTheme = "green";
             }
             case "Roxo e Branco" -> {
                 lightSquareColor = new Color(255, 255, 255);

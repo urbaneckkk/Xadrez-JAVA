@@ -19,81 +19,164 @@ public class ChessAI {
 
     public void makeMove() {
         System.out.println("IA está pensando...");
-
-        // Abordagem simplificada: encontrar qualquer movimento válido
+        
+        // IA melhorada com avaliação básica
+        makeSmartMove();
+    }
+    
+    private void makeSmartMove() {
         boolean isWhiteTurn = game.isWhiteTurn();
         Board board = game.getBoard();
+        List<Move> allValidMoves = getAllValidMoves(board, isWhiteTurn);
 
-        // Lista para armazenar todos os movimentos possíveis
+        if (allValidMoves.isEmpty()) {
+            System.out.println("Nenhum movimento disponível para a IA!");
+            return;
+        }
+
+        Move bestMove = evaluateBestMove(allValidMoves, board, isWhiteTurn);
+        
+        System.out.println("IA escolheu: " + bestMove.getPiece().getSymbol() + 
+                         " de " + bestMove.getFrom() + " para " + bestMove.getTo());
+        game.movePieceDirect(bestMove.getFrom(), bestMove.getTo());
+    }
+    
+    private List<Move> getAllValidMoves(Board board, boolean isWhiteTurn) {
         List<Move> allValidMoves = new ArrayList<>();
 
-        // Percorre o tabuleiro procurando peças da cor atual
         for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
                 Position from = new Position(r, c);
                 Piece piece = board.getPieceAt(from);
 
-                // Se encontrou uma peça da cor atual
                 if (piece != null && piece.isWhite() == isWhiteTurn) {
-                    // Obtém todos os movimentos possíveis para esta peça
                     List<Position> possibleMoves = piece.getPossibleMoves();
                     if (possibleMoves != null) {
                         for (Position to : possibleMoves) {
-                            // Verifica se o movimento não causa xeque no próprio rei
-                            if (!game.moveCausesCheck(piece, to)) {
-                                allValidMoves.add(new Move(from, to, piece, board.getPieceAt(to)));
+                            Move move = new Move(from, to, piece, board.getPieceAt(to));
+                            // Validação básica sem recursão complexa
+                            if (isBasicValidMove(board, move)) {
+                                allValidMoves.add(move);
                             }
                         }
                     }
                 }
             }
         }
-
-        System.out.println("Encontrados " + allValidMoves.size() + " movimentos válidos");
-
-        // Se encontrou algum movimento válido, executa um deles aleatoriamente
-        if (!allValidMoves.isEmpty()) {
-            // Seleciona um movimento aleatório da lista de movimentos válidos
-            Move selectedMove = allValidMoves.get(random.nextInt(allValidMoves.size()));
-            System.out.println("Movendo " +
-                    selectedMove.getPiece().getSymbol() +
-                    " de " + selectedMove.getFrom() +
-                    " para " + selectedMove.getTo());
-
-            // Usa movePieceDirect para mover a peça diretamente
-            boolean success = game.movePieceDirect(selectedMove.getFrom(), selectedMove.getTo());
-
-            if (success) {
-                System.out.println("Movimento executado com sucesso!");
-                return;
-            } else {
-                System.out.println("Falha ao executar movimento!");
-                // Se falhar, tenta outro movimento aleatório
-                for (int attempt = 1; attempt < 10; attempt++) {
-                    // Remove o movimento que falhou da lista
-                    allValidMoves.remove(selectedMove);
-                    if (allValidMoves.isEmpty())
-                        break;
-
-                    // Seleciona outro movimento aleatório
-                    selectedMove = allValidMoves.get(random.nextInt(allValidMoves.size()));
-                    System.out.println("Tentativa " + (attempt + 1) + ": Movendo " +
-                            selectedMove.getPiece().getSymbol() +
-                            " de " + selectedMove.getFrom() +
-                            " para " + selectedMove.getTo());
-
-                    success = game.movePieceDirect(selectedMove.getFrom(), selectedMove.getTo());
-
-                    if (success) {
-                        System.out.println("Movimento executado com sucesso!");
-                        return;
+        return allValidMoves;
+    }
+    
+    private boolean isBasicValidMove(Board board, Move move) {
+        Position to = move.getTo();
+        
+        // Verificação básica de limites do tabuleiro
+        if (to.getRow() < 0 || to.getRow() >= 8 || 
+            to.getColumn() < 0 || to.getColumn() >= 8) {
+            return false;
+        }
+        
+        // Verificação se o movimento é válido para a peça
+        Piece piece = move.getPiece();
+        if (piece == null || !piece.canMoveTo(to)) {
+            return false;
+        }
+        
+        // Verificação simples se não deixa o próprio rei em xeque
+        return !game.moveCausesCheck(piece, to);
+    }
+    
+    private Move evaluateBestMove(List<Move> moves, Board board, boolean isWhiteTurn) {
+        Move bestMove = null;
+        int bestScore = Integer.MIN_VALUE;
+        
+        for (Move move : moves) {
+            int score = evaluateMoveScore(move, board, isWhiteTurn);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = move;
+            }
+        }
+        
+        // Se não encontrou um bom movimento, escolhe aleatório
+        return bestMove != null ? bestMove : moves.get(random.nextInt(moves.size()));
+    }
+    
+    private int evaluateMoveScore(Move move, Board board, boolean isWhiteTurn) {
+        int score = 0;
+        
+        // 1. Prioriza capturas valiosas
+        if (move.getCapturedPiece() != null) {
+            score += getPieceValue(move.getCapturedPiece()) * 10;
+        }
+        
+        // 2. Bonifica controle do centro
+        Position to = move.getTo();
+        if (isCenterPosition(to)) {
+            score += 30;
+        }
+        
+        // 3. Bonifica desenvolvimento de peças
+        if (isDevelopmentMove(move, board)) {
+            score += 20;
+        }
+        
+        // 4. Penaliza movimentos que expõem peças valiosas
+        if (isExposingValuablePiece(move, board)) {
+            score -= getPieceValue(move.getPiece()) * 5;
+        }
+        
+        return score;
+    }
+    
+    private boolean isCenterPosition(Position pos) {
+        int row = pos.getRow();
+        int col = pos.getColumn();
+        return (row >= 3 && row <= 4) && (col >= 3 && col <= 4);
+    }
+    
+    private boolean isDevelopmentMove(Move move, Board board) {
+        Piece piece = move.getPiece();
+        Position from = move.getFrom();
+        
+        // Cavalos e bispos saindo das posições iniciais
+        if (piece instanceof Knight || piece instanceof Bishop) {
+            int backRank = piece.isWhite() ? 7 : 0;
+            return from.getRow() == backRank;
+        }
+        
+        return false;
+    }
+    
+    private boolean isExposingValuablePiece(Move move, Board board) {
+        // Verificação simples se a peça fica em posição vulnerável
+        Position to = move.getTo();
+        Piece piece = move.getPiece();
+        
+        // Rainha ou rei em posições perigosas
+        if (piece instanceof Queen || piece instanceof King) {
+            return isNearEnemyPieces(to, board, !piece.isWhite());
+        }
+        
+        return false;
+    }
+    
+    private boolean isNearEnemyPieces(Position pos, Board board, boolean enemyColor) {
+        for (int dr = -1; dr <= 1; dr++) {
+            for (int dc = -1; dc <= 1; dc++) {
+                if (dr == 0 && dc == 0) continue;
+                
+                int newRow = pos.getRow() + dr;
+                int newCol = pos.getColumn() + dc;
+                
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    Piece piece = board.getPieceAt(new Position(newRow, newCol));
+                    if (piece != null && piece.isWhite() == enemyColor) {
+                        return true;
                     }
                 }
-                System.out.println("Todas as tentativas de movimento falharam!");
             }
-        } else {
-            System.out.println("Nenhum movimento válido encontrado!");
         }
+        return false;
     }
 
     public Move findBestMove(int depth) {
@@ -250,42 +333,242 @@ public class ChessAI {
     private int evaluateBoard(Board board, boolean isWhiteTurn) {
         int value = 0;
 
-        // Avalia o valor material das peças
+        // 1. Avaliação material e posicional das peças
+        value += evaluateMaterialAndPosition(board, isWhiteTurn);
+        
+        // 2. Avaliação de mobilidade (número de movimentos possíveis)
+        value += evaluateMobility(board, isWhiteTurn);
+        
+        // 3. Avaliação de segurança do rei
+        value += evaluateKingSafety(board, isWhiteTurn);
+        
+        // 4. Avaliação de controle do centro
+        value += evaluateCenterControl(board, isWhiteTurn);
+        
+        // 5. Avaliação de ameaças e capturas
+        value += evaluateThreats(board, isWhiteTurn);
+        
+        // 6. Bônus por xeque e xeque-mate
+        if (isKingInCheck(board, !isWhiteTurn)) {
+            value += 50; // Bônus por dar xeque
+            // Verifica se é xeque-mate
+            List<Move> opponentMoves = getAllPossibleMoves(board, !isWhiteTurn);
+            if (opponentMoves.isEmpty()) {
+                value += 10000; // Bônus massivo por xeque-mate
+            }
+        }
+        
+        // 7. Penalidade por estar em xeque
+        if (isKingInCheck(board, isWhiteTurn)) {
+            value -= 60;
+        }
+
+        return value;
+    }
+    
+    private int evaluateMaterialAndPosition(Board board, boolean isWhiteTurn) {
+        int value = 0;
+        
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 Position pos = new Position(row, col);
                 Piece piece = board.getPieceAt(pos);
                 if (piece != null) {
                     int pieceValue = getPieceValue(piece);
-
-                    // Adiciona bônus para peças no centro do tabuleiro
-                    if ((row >= 2 && row <= 5) && (col >= 2 && col <= 5)) {
-                        pieceValue += 10;
-                    }
-
-                    // Adiciona bônus para cavalos e bispos desenvolvidos
-                    if ((piece instanceof Knight || piece instanceof Bishop) &&
-                            ((piece.isWhite() && row < 6) || (!piece.isWhite() && row > 1))) {
-                        pieceValue += 15;
-                    }
-
-                    // Adiciona o valor à avaliação total
+                    
+                    // Bônus posicional específico por tipo de peça
+                    pieceValue += getPositionalBonus(piece, row, col, board);
+                    
+                    // Adiciona ou subtrai baseado na cor da peça
                     value += piece.isWhite() == isWhiteTurn ? pieceValue : -pieceValue;
                 }
             }
         }
-
-        // Verifica se o rei está em xeque
-        if (isKingInCheck(board, isWhiteTurn)) {
-            value -= 50; // Penalidade por estar em xeque
-        }
-
-        // Verifica se o oponente está em xeque
-        if (isKingInCheck(board, !isWhiteTurn)) {
-            value += 30; // Bônus por colocar o oponente em xeque
-        }
-
+        
         return value;
+    }
+    
+    private int getPositionalBonus(Piece piece, int row, int col, Board board) {
+        int bonus = 0;
+        
+        // Bônus para peças no centro (mais forte no centro real)
+        if (row >= 3 && row <= 4 && col >= 3 && col <= 4) {
+            bonus += 20; // Centro forte
+        } else if (row >= 2 && row <= 5 && col >= 2 && col <= 5) {
+            bonus += 10; // Centro expandido
+        }
+        
+        if (piece instanceof Pawn) {
+            // Peões avançados são valiosos
+            if (piece.isWhite()) {
+                bonus += (7 - row) * 5; // Peões brancos avançando
+            } else {
+                bonus += row * 5; // Peões pretos avançando
+            }
+        } else if (piece instanceof Knight) {
+            // Cavalos são melhores no centro
+            bonus += 15;
+            // Penalidade para cavalos na borda
+            if (row == 0 || row == 7 || col == 0 || col == 7) {
+                bonus -= 20;
+            }
+        } else if (piece instanceof Bishop) {
+            // Bispos desenvolvidos
+            if ((piece.isWhite() && row < 6) || (!piece.isWhite() && row > 1)) {
+                bonus += 15;
+            }
+        } else if (piece instanceof Rook) {
+            // Torres em colunas abertas ou semi-abertas
+            boolean hasOwnPawn = false;
+            for (int r = 0; r < 8; r++) {
+                Piece p = board.getPieceAt(new Position(r, col));
+                if (p instanceof Pawn && p.isWhite() == piece.isWhite()) {
+                    hasOwnPawn = true;
+                    break;
+                }
+            }
+            if (!hasOwnPawn) {
+                bonus += 25; // Torre em coluna aberta/semi-aberta
+            }
+        }
+        
+        return bonus;
+    }
+    
+    private int evaluateMobility(Board board, boolean isWhiteTurn) {
+        // Simplificado para evitar recursão - apenas conta peças ativas
+        int myPieces = 0;
+        int opponentPieces = 0;
+        
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece piece = board.getPieceAt(new Position(r, c));
+                if (piece != null) {
+                    if (piece.isWhite() == isWhiteTurn) {
+                        myPieces++;
+                    } else {
+                        opponentPieces++;
+                    }
+                }
+            }
+        }
+        
+        return (myPieces - opponentPieces) * 5;
+    }
+    
+    private int evaluateKingSafety(Board board, boolean isWhiteTurn) {
+        int safety = 0;
+        
+        // Encontra o rei
+        Position kingPos = findKing(board, isWhiteTurn);
+        if (kingPos == null) return -10000; // Rei não encontrado = problema grave
+        
+        // Conta peças inimigas próximas ao rei (avaliação simplificada)
+        int nearbyEnemies = 0;
+        for (int row = Math.max(0, kingPos.getRow() - 2); row <= Math.min(7, kingPos.getRow() + 2); row++) {
+            for (int col = Math.max(0, kingPos.getColumn() - 2); col <= Math.min(7, kingPos.getColumn() + 2); col++) {
+                Piece piece = board.getPieceAt(new Position(row, col));
+                if (piece != null && piece.isWhite() != isWhiteTurn) {
+                    nearbyEnemies++;
+                }
+            }
+        }
+        
+        safety -= nearbyEnemies * 10; // Penalidade por inimigos próximos
+        
+        return safety;
+    }
+    
+    private int evaluateCenterControl(Board board, boolean isWhiteTurn) {
+        int control = 0;
+        Position[] centerSquares = {
+            new Position(3, 3), new Position(3, 4),
+            new Position(4, 3), new Position(4, 4)
+        };
+        
+        // Avaliação simplificada: conta peças no centro e próximas ao centro
+        for (Position center : centerSquares) {
+            Piece centerPiece = board.getPieceAt(center);
+            if (centerPiece != null) {
+                if (centerPiece.isWhite() == isWhiteTurn) {
+                    control += 20; // Bônus por ocupar o centro
+                } else {
+                    control -= 20; // Penalidade se oponente ocupa o centro
+                }
+            }
+        }
+        
+        // Conta peças próximas ao centro
+        for (int row = 2; row <= 5; row++) {
+            for (int col = 2; col <= 5; col++) {
+                Piece piece = board.getPieceAt(new Position(row, col));
+                if (piece != null) {
+                    if (piece.isWhite() == isWhiteTurn) {
+                        control += 5; // Pequeno bônus por estar próximo ao centro
+                    } else {
+                        control -= 5;
+                    }
+                }
+            }
+        }
+        
+        return control;
+    }
+    
+    private int evaluateThreats(Board board, boolean isWhiteTurn) {
+        // Simplificado para evitar recursão - avalia peças em posições vulneráveis
+        int threats = 0;
+        
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Position pos = new Position(r, c);
+                Piece piece = board.getPieceAt(pos);
+                if (piece != null && piece.isWhite() != isWhiteTurn) {
+                    // Peça inimiga - verifica se está em posição vulnerável
+                    if (isPositionVulnerable(board, pos)) {
+                        threats += getPieceValue(piece) / 4;
+                    }
+                }
+            }
+        }
+        
+        return threats;
+    }
+    
+    private boolean isPositionVulnerable(Board board, Position pos) {
+        // Verifica se a posição está próxima de peças inimigas
+        Piece piece = board.getPieceAt(pos);
+        if (piece == null) return false;
+        
+        for (int dr = -1; dr <= 1; dr++) {
+            for (int dc = -1; dc <= 1; dc++) {
+                if (dr == 0 && dc == 0) continue;
+                
+                int newRow = pos.getRow() + dr;
+                int newCol = pos.getColumn() + dc;
+                
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    Piece neighbor = board.getPieceAt(new Position(newRow, newCol));
+                    if (neighbor != null && neighbor.isWhite() != piece.isWhite()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    private Position findKing(Board board, boolean isWhite) {
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                Position pos = new Position(row, col);
+                Piece piece = board.getPieceAt(pos);
+                if (piece instanceof King && piece.isWhite() == isWhite) {
+                    return pos;
+                }
+            }
+        }
+        return null;
     }
 
     private int getPieceValue(Piece piece) {

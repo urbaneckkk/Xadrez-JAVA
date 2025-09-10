@@ -25,14 +25,16 @@ public class King extends Piece {
         }
 
         // Lógica do Roque
-        if (!this.hasMoved) {
+        if (!this.hasMoved && !board.isUnderAttack(position, !isWhite)) {
             // Roque do lado do rei (king side)
             Position rookKingSidePos = new Position(position.getRow(), 7);
             Piece rookKingSide = board.getPieceAt(rookKingSidePos);
             if (rookKingSide instanceof Rook && !rookKingSide.hasMoved) {
-                if (board.getPieceAt(new Position(position.getRow(), 5)) == null &&
-                        board.getPieceAt(new Position(position.getRow(), 6)) == null) {
-                    moves.add(new Position(position.getRow(), 6));
+                Position pos5 = new Position(position.getRow(), 5);
+                Position pos6 = new Position(position.getRow(), 6);
+                if (board.getPieceAt(pos5) == null && board.getPieceAt(pos6) == null &&
+                    !board.isUnderAttack(pos5, !isWhite) && !board.isUnderAttack(pos6, !isWhite)) {
+                    moves.add(pos6);
                 }
             }
 
@@ -40,10 +42,13 @@ public class King extends Piece {
             Position rookQueenSidePos = new Position(position.getRow(), 0);
             Piece rookQueenSide = board.getPieceAt(rookQueenSidePos);
             if (rookQueenSide instanceof Rook && !rookQueenSide.hasMoved) {
-                if (board.getPieceAt(new Position(position.getRow(), 1)) == null &&
-                        board.getPieceAt(new Position(position.getRow(), 2)) == null &&
-                        board.getPieceAt(new Position(position.getRow(), 3)) == null) {
-                    moves.add(new Position(position.getRow(), 2));
+                Position pos1 = new Position(position.getRow(), 1);
+                Position pos2 = new Position(position.getRow(), 2);
+                Position pos3 = new Position(position.getRow(), 3);
+                if (board.getPieceAt(pos1) == null && board.getPieceAt(pos2) == null &&
+                    board.getPieceAt(pos3) == null &&
+                    !board.isUnderAttack(pos2, !isWhite) && !board.isUnderAttack(pos3, !isWhite)) {
+                    moves.add(pos2);
                 }
             }
         }

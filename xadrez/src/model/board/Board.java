@@ -32,8 +32,18 @@ public class Board {
         return pieces[position.getRow()][position.getColumn()];
     }
 
-    // Coloca uma peça na posição
+    // Coloca uma peça na posição (para inicialização)
     public void placePiece(Piece piece, Position position) {
+        if (position == null || !position.isValid())
+            return;
+        pieces[position.getRow()][position.getColumn()] = piece;
+        if (piece != null) {
+            piece.setInitialPosition(position);
+        }
+    }
+    
+    // Coloca uma peça na posição (para movimentos durante o jogo)
+    public void placePieceMove(Piece piece, Position position) {
         if (position == null || !position.isValid())
             return;
         pieces[position.getRow()][position.getColumn()] = piece;
@@ -69,8 +79,21 @@ public class Board {
             for (int col = 0; col < 8; col++) {
                 Piece piece = pieces[row][col];
                 if (piece != null && piece.isWhite() == byWhite) {
-                    if (piece.canMoveTo(position)) {
-                        return true;
+                    // Evita recursão infinita durante verificação de roque
+                    if (piece instanceof King) {
+                        // Verifica apenas movimentos básicos do rei (sem roque)
+                        Position kingPos = piece.getPosition();
+                        if (kingPos != null) {
+                            int rowDiff = Math.abs(position.getRow() - kingPos.getRow());
+                            int colDiff = Math.abs(position.getColumn() - kingPos.getColumn());
+                            if (rowDiff <= 1 && colDiff <= 1 && (rowDiff != 0 || colDiff != 0)) {
+                                return true;
+                            }
+                        }
+                    } else {
+                        if (piece.canMoveTo(position)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -88,7 +111,7 @@ public class Board {
         Position originalPosition = selectedPiece.getPosition();
 
         removePiece(originalPosition);
-        placePiece(selectedPiece, destination);
+        placePieceMove(selectedPiece, destination);
 
         Move move = new Move(originalPosition, destination, selectedPiece, capturedPiece);
         moveHistory.add(move);

@@ -27,6 +27,11 @@ public abstract class Piece {
         this.position = position;
         this.hasMoved = true;
     }
+    
+    public void setInitialPosition(Position position) {
+        this.position = position;
+        // Não marca hasMoved = true na inicialização
+    }
 
     public boolean hasMoved() {
         return hasMoved;
